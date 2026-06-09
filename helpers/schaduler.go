@@ -64,33 +64,28 @@ func (s *AutoUWScheduler) nextRunTime() time.Time {
 	loc, _ := time.LoadLocation(s.config.Timezone)
 	now := time.Now().In(loc)
 
-	//next := time.Date(now.Year(), now.Month(), now.Day(), s.config.RunHour, s.config.RunMinute, 0, 0, loc)
-	//
-	//if !next.After(now) {
-	//	next = time.Date(now.Year(), now.Month(), now.Day()+1, s.config.RunHour, s.config.RunMinute, 0, 0, loc)
-	//}
-	//
-	//log.Debug().
-	//	Str("now", now.Format("2006-01-02 15:04:05 MST")).
-	//	Str("next_run", next.Format("2006-01-02 15:04:05 MST")).
-	//	Dur("wait_duration", time.Until(next)).
-	//	Msg("auto_uw_scheduler: next run scheduled")
-	//return next
+	next := time.Date(now.Year(), now.Month(), now.Day(), s.config.RunHour, s.config.RunMinute, 0, 0, loc)
 
-	interval := time.Duration(s.config.IntervalMin) * time.Minute
-	return now.Add(interval)
+	if !next.After(now) {
+		next = time.Date(now.Year(), now.Month(), now.Day()+1, s.config.RunHour, s.config.RunMinute, 0, 0, loc)
+	}
+
+	log.Debug().
+		Str("now", now.Format("2006-01-02 15:04:05 MST")).
+		Str("next_run", next.Format("2006-01-02 15:04:05 MST")).
+		Dur("wait_duration", time.Until(next)).
+		Msg("auto_uw_scheduler: next run scheduled")
+	return next
 }
 
 func (s *AutoUWScheduler) runDailyReport() {
 	loc, _ := time.LoadLocation(s.config.Timezone)
 	yesterday := time.Now().In(loc).AddDate(0, 0, -1)
-	//today := time.Now().In(loc)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	if err := s.usecase.SendDailyReport(ctx, yesterday, s.config.Recipients); err != nil {
-		//if err := s.usecase.SendDailyReport(ctx, today, s.config.Recipients); err != nil {
 		log.Error().
 			Err(err).
 			Str("target_date", yesterday.Format("2006-01-02")).
