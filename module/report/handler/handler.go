@@ -77,9 +77,8 @@ func (h *ReportHandler) ExportReportAutoUW(c *gin.Context) {
 	}
 
 	filter := report2.ReportFilter{
-		StartDate:        startDate,
-		EndDate:          endDate,
-		SubmissionSource: req.SubmissionSource,
+		StartDate: startDate,
+		EndDate:   endDate,
 	}
 	if req.CNReleaseStatus != nil {
 		status := report2.CNReleaseStatus(*req.CNReleaseStatus)
@@ -91,6 +90,18 @@ func (h *ReportHandler) ExportReportAutoUW(c *gin.Context) {
 			return
 		}
 		filter.CNReleaseStatus = &status
+	}
+
+	if req.SubmissionSource != nil {
+		sourceType := report2.SubmissionSourceType(*req.SubmissionSource)
+		if !sourceType.IsValid() {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":   "invalid_submission_source",
+				"message": "nilai submission_source harus: UPLOAD, ESUBMISSION, atau EXTERNAL",
+			})
+			return
+		}
+		filter.SubmissionSource = &sourceType
 	}
 	excelBytes, filename, err := h.reportUsecase.GenerateReport(c.Request.Context(), filter)
 	if err != nil {

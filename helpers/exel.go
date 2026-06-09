@@ -4,16 +4,21 @@ import (
 	"bytes"
 	"fmt"
 	"html"
+	"strings"
 	"time"
 
 	"github.com/YugaAdiIrawan/model/report"
 )
 
-func sourceLabel(source int) string {
-	if source == 1 {
-		return "API"
+func sourceLabel(source int, noRef string) string {
+	if source == 0 {
+		return "UPLOAD"
 	}
-	return "UPLOAD"
+	// source = 1: bedakan ESUBMISSION vs EXTERNAL dari prefix no_ref
+	if strings.HasPrefix(noRef, "018-") {
+		return "ESUBMISSION"
+	}
+	return "EXTERNAL"
 }
 
 func safeString(s *string) string {
@@ -147,7 +152,7 @@ func GenerateAutoUWExcelHTML(data []report.AutoUWReport, reportDate time.Time) (
 		buf.WriteString(fmt.Sprintf(`<td class="col-tenor" x:num>%v</td>`, item.Tenor))
 		buf.WriteString(fmt.Sprintf(`<td class="col-up" x:num>%v</td>`, item.UP))
 		buf.WriteString(fmt.Sprintf(`<td class="col-order">%s</td>`, html.EscapeString(item.TanggalOrder.Format("2006-01-02 15:04:05"))))
-		buf.WriteString(fmt.Sprintf(`<td class="col-source">%s</td>`, html.EscapeString(sourceLabel(item.Source))))
+		buf.WriteString(fmt.Sprintf(`<td class="col-source">%s</td>`, html.EscapeString(sourceLabel(item.Source, item.OrderID))))
 		buf.WriteString(fmt.Sprintf(`<td class="col-status">%s</td>`, html.EscapeString(statusCN)))
 		buf.WriteString("</tr>\n")
 	}

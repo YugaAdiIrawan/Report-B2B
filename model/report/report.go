@@ -1,6 +1,7 @@
 package report
 
 import (
+	"strings"
 	"time"
 )
 
@@ -31,18 +32,45 @@ func (s CNReleaseStatus) IsValid() bool {
 }
 
 // SubmissionSource: false = Upload, true = API
-type SubmissionSource *bool
+type SubmissionSourceType string
+
+const (
+	SubmissionSourceUpload      SubmissionSourceType = "UPLOAD"
+	SubmissionSourceESubmission SubmissionSourceType = "ESUBMISSION"
+	SubmissionSourceExternal    SubmissionSourceType = "EXTERNAL"
+)
+
+func (s SubmissionSourceType) IsValid() bool {
+	switch s {
+	case SubmissionSourceUpload,
+		SubmissionSourceESubmission,
+		SubmissionSourceExternal:
+		return true
+	}
+	return false
+}
+
+func ResolveSubmissionSource(source int, noRef string) SubmissionSourceType {
+	if source == 0 {
+		return SubmissionSourceUpload
+	}
+	if strings.HasPrefix(noRef, "018-") {
+		return SubmissionSourceESubmission
+	}
+	return SubmissionSourceExternal
+}
 
 type ReportFilter struct {
 	StartDate        time.Time
 	EndDate          time.Time
-	CNReleaseStatus  *CNReleaseStatus // nil = all
-	SubmissionSource *bool            // nil = all, true = API, false = Upload
+	CNReleaseStatus  *CNReleaseStatus      // nil = all
+	SubmissionSource *SubmissionSourceType // nil = all, true = API, false = Upload atau External
 }
 
 type AutoUWReport struct {
 	LeadID          int64
 	NoRef           string
+	OrderID         string
 	Partner         string
 	NameOfInsurance string
 	DateOfBirth     *time.Time
@@ -73,7 +101,7 @@ type ReportRequest struct {
 	StartDate        string  `form:"start_date" binding:"required"` // format: 2006-01-02
 	EndDate          string  `form:"end_date" binding:"required"`   // format: 2006-01-02
 	CNReleaseStatus  *string `form:"cn_release_status"`             // optional
-	SubmissionSource *bool   `form:"submission_source"`             // optional: 0=API, 1=Upload
+	SubmissionSource *string `form:"submission_source"`             // optional: 0=API, 1=Upload
 }
 
 type AutomailReportLog struct {

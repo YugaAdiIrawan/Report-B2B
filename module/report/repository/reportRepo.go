@@ -39,6 +39,7 @@ func (repo *reportRepo) FetchReportData(ctx context.Context, filter report.Repor
 		err := rows.Scan(
 			&item.LeadID,
 			&item.NoRef,
+			&item.OrderID,
 			&item.Partner,
 			&item.NameOfInsurance,
 			&dateOfBirth,
@@ -76,11 +77,11 @@ func (repo *reportRepo) buildQueryData(filter report.ReportFilter) (string, []in
 		args      []interface{}
 	)
 
-	condition = append(condition, fmt.Sprintf("tanggal_order >= ?"))
+	condition = append(condition, fmt.Sprintf("created_at >= ?"))
 	args = append(args, filter.StartDate)
 
 	endOfDay := time.Date(filter.EndDate.Year(), filter.EndDate.Month(), filter.EndDate.Day(), 23, 59, 59, 999999999, filter.EndDate.Location())
-	condition = append(condition, fmt.Sprintf("tanggal_order <= ?"))
+	condition = append(condition, fmt.Sprintf("created_at <= ?"))
 	args = append(args, endOfDay)
 
 	if filter.CNReleaseStatus != nil {
@@ -93,17 +94,29 @@ func (repo *reportRepo) buildQueryData(filter report.ReportFilter) (string, []in
 	}
 
 	if filter.SubmissionSource != nil {
-		sourceVal := 0
-		if *filter.SubmissionSource {
-			sourceVal = 1
+		switch *filter.SubmissionSource {
+		case report.SubmissionSourceUpload:
+			condition = append(condition, fmt.Sprintf("source = ?"))
+			args = append(args, 0)
+
+		case report.SubmissionSourceESubmission:
+			condition = append(condition, fmt.Sprintf("source = ?"))
+			args = append(args, 1)
+			condition = append(condition, fmt.Sprintf("order_id LIKE = ?"))
+			args = append(args, "018-%")
+
+		case report.SubmissionSourceExternal:
+			condition = append(condition, fmt.Sprintf("source = ?"))
+			args = append(args, 1)
+			condition = append(condition, fmt.Sprintf("order_id NOT LIKE = ?"))
+			args = append(args, "018-%")
 		}
-		condition = append(condition, fmt.Sprintf("source = ?"))
-		args = append(args, sourceVal)
 	}
 	query := `
 		SELECT
 			lead_id,
 			no_ref,
+			order_id,
 			partner,
 			name_of_insurance,
 			date_of_birth,
@@ -116,7 +129,7 @@ func (repo *reportRepo) buildQueryData(filter report.ReportFilter) (string, []in
 			status_sent_cn
 		FROM vw_report
 		WHERE ` + strings.Join(condition, " AND ") + ` 
-		ORDER BY tanggal_order ASC`
+		ORDER BY created_at ASC`
 
 	// TEMPORARY DEBUG
 	fmt.Printf("[DEBUG QUERY]\n%s\n", query)
