@@ -53,7 +53,6 @@ func main() {
 		DBName:   os.Getenv("DB_NAME"),
 		MaxIdle:  5,
 		MaxOpen:  25,
-		// ConnMaxLifetime & ConnMaxIdleTime pakai default jika tidak diset
 	})
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to connect to database")
@@ -107,31 +106,29 @@ func main() {
 	log.Info().Msg("server exited gracefully")
 }
 
-// main.go (same file, atau pindah ke internal/app/app.go jika makin besar)
-
 type application struct {
 	router    *gin.Engine
-	scheduler *helpers.AutoUWScheduler // sesuaikan dengan type aslinya
+	scheduler *helpers.AutoUWScheduler
 }
 
 func buildApp(db *sql.DB, cfg *config.Config) (*application, error) {
-	// --- Middleware ---
+	//Middleware
 	mwRepo := miiddlewareRepo.NewMiddlewareRepository(db)
 	mwUsecase := middlewareUsecase.NewMiddlewareUsecase(mwRepo)
 
-	// --- Router ---
+	//Router
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(mwUsecase.MiddlewareRouteRoles)
 
-	// --- Report ---
+	//Report
 	reportRepo := repository.NewReportRepo(db)
 	emailSvc := client.NewComoEmailService(cfg.ComoEmail, reportRepo)
 	reportUC := usecase.NewReportUsecase(reportRepo, emailSvc)
 
 	handler.NewReportHandler(router, reportUC)
 
-	// --- Scheduler ---
+	//Scheduler
 	scheduler, err := helpers.NewAutoUWSchaduers(reportUC, report.AutoUWSchedulerConfig{
 		Recipients: cfg.AutoUWReport.Recipients,
 		CCList:     cfg.AutoUWReport.CCList,
