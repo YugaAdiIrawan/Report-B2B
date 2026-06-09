@@ -19,10 +19,10 @@ func NewReportHandler(r *gin.Engine, reportUsecase report.ReportUsecase) {
 	handler := ReportHandler{
 		reportUsecase: reportUsecase,
 	}
-	reportUW := r.Group("/report")
+	reportUW := r.Group("/auto-uw")
 	reportUW.Use(middleware.JwtAuthWithHeader)
 	{
-		reportUW.GET("/auto-uw/export", handler.ExportReportAutoUW)
+		reportUW.GET("/export", handler.ExportReportAutoUW)
 	}
 }
 
