@@ -23,6 +23,11 @@ type MySqlConfig struct {
 	ConnMaxIdleTime time.Duration
 }
 
+type ServiceAuthConfig struct {
+	ReportServiceUsername string
+	ReportServicePassword string
+}
+
 func (c *MySqlConfig) applyDefaults() {
 	if c.MaxIdle == 0 {
 		c.MaxIdle = 5

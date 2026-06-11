@@ -1,171 +1,89 @@
 package middleware
 
 import (
+	"crypto/subtle"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 
-	b64 "encoding/base64"
-
-	"github.com/dgrijalva/jwt-go"
+	"github.com/YugaAdiIrawan/config"
 	"github.com/gin-gonic/gin"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
-var (
-	jwtSigningMethod = jwt.SigningMethodHS256
-	jwtSignatureKey  = []byte(os.Getenv("APP_SECRET_KEY_JWT"))
-)
-
-// BasicAuth - authentication with basic auth
-func BasicAuth(c *gin.Context) {
-	authHeader := c.Request.Header.Get("Authorization")
-
-	if !strings.Contains(authHeader, "Basic") {
-		result := gin.H{
-			"status":  http.StatusForbidden,
-			"message": "invalid token",
-			"href":    c.Request.RequestURI,
-		}
-		c.JSON(http.StatusForbidden, result)
-		c.Abort()
-		return
+func LoadServiceAuthConfig() (*config.ServiceAuthConfig, error) {
+	username := os.Getenv("REPORT_SERVICE_USERNAME")
+	password := os.Getenv("REPORT_SERVICE_PASSWORD")
+	// temporary debug
+	log.Printf("[ServiceAuthConfig] username: %q", username)
+	log.Printf("[ServiceAuthConfig] password: %q", password)
+	if username == "" || password == "" {
+		return nil, fmt.Errorf("LoadServiceAuthConfig: REPORT_SERVICE_USERNAME and REPORT_SERVICE_PASSWORD are required")
 	}
 
-	clientID := os.Getenv("CLIENT_ID")
-	clientSecret := os.Getenv("CLIENT_SECRET")
-
-	tokenString := strings.Replace(authHeader, "Basic ", "", -1)
-	myToken := clientID + ":" + clientSecret
-	myBasicAuth := b64.StdEncoding.EncodeToString([]byte(myToken))
-	if tokenString != myBasicAuth {
-		result := gin.H{
-			"status":  http.StatusUnauthorized,
-			"message": "Unauthorized user",
-			"href":    c.Request.RequestURI,
-		}
-		c.JSON(http.StatusUnauthorized, result)
-		c.Abort()
-		return
-	}
+	return &config.ServiceAuthConfig{
+		ReportServiceUsername: username,
+		ReportServicePassword: password,
+	}, nil
 }
 
-// JWTAuth - auth token jwt
-func JWTAuth(c *gin.Context) {
-	authHeader := c.Request.Header.Get("Authorization")
-	if !strings.Contains(authHeader, "Bearer") {
-		result := gin.H{
-			"status":  http.StatusForbidden,
-			"message": "invalid token",
-			"href":    c.Request.RequestURI,
-		}
-		c.JSON(http.StatusForbidden, result)
-		c.Abort()
-		return
-	}
-
-	tokenString := strings.Replace(authHeader, "Bearer ", "", -1)
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		if method, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Signing method invalid")
-		} else if method != jwtSigningMethod {
-			return nil, fmt.Errorf("Signing method invalid")
-		}
-
-		return jwtSignatureKey, nil
-	})
-
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-	if err != nil {
-		log.Error().Msg(err.Error())
-		result := gin.H{
-			"status":  http.StatusUnauthorized,
-			"message": err.Error(),
-		}
-		c.JSON(http.StatusUnauthorized, result)
-		c.Abort()
-		return
-	}
-
-	_, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		result := gin.H{
-			"status":  http.StatusInternalServerError,
-			"message": "Error check payload token",
-		}
-		c.JSON(http.StatusInternalServerError, result)
-		c.Abort()
-		return
-	}
+type BasicAuthConfig struct {
+	Username string
+	Password string
 }
 
-// JwtAuthWithHeader - auth token jwt with header
-func JwtAuthWithHeader(c *gin.Context) {
-	authHeader := c.Request.Header.Get("Authorization")
-	myUserID := c.Request.Header.Get("userid")
-	if myUserID == "" {
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{
-				"status":   http.StatusBadRequest,
-				"messages": "Header cant empty",
-			},
-		)
-		c.Abort()
-		return
+func BasicAuth(cfg BasicAuthConfig) gin.HandlerFunc {
+	if cfg.Username == "" || cfg.Password == "" {
+		panic("BasicAuth middleware: username or password is empty")
 	}
 
-	userID, _ := strconv.Atoi(myUserID)
-
-	if !strings.Contains(authHeader, "Bearer") {
-		result := gin.H{
-			"status":   http.StatusForbidden,
-			"messages": "invalid token",
-			"href":     c.Request.RequestURI,
-		}
-		c.JSON(http.StatusForbidden, result)
-		c.Abort()
-		return
-	}
-
-	tokenString := strings.Replace(authHeader, "Bearer ", "", -1)
-
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		if method, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Signing method invalid")
-		} else if method != jwtSigningMethod {
-			return nil, fmt.Errorf("Signing method invalid")
-		}
-
-		return jwtSignatureKey, nil
-	})
-
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-	if err != nil {
-		log.Error().Msg(err.Error())
-		result := gin.H{
-			"status":   http.StatusUnauthorized,
-			"messages": err.Error(),
-		}
-		c.JSON(http.StatusUnauthorized, result)
-		c.Abort()
-		return
-	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if ok {
-		myID := claims["user_id"].(float64)
-		if userID != int(myID) {
-			result := gin.H{
-				"status":   http.StatusUnauthorized,
-				"messages": "Unauthorize user",
-			}
-			c.JSON(http.StatusUnauthorized, result)
-			c.Abort()
+	return func(c *gin.Context) {
+		authHeader := c.Request.Header.Get("Authorization")
+		if authHeader == "" {
+			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
+		log.Printf("[BasicAuth] Authorization header: %q", authHeader)
+		log.Printf("[BasicAuth] Expected username: %q", cfg.Username)
+
+		if !strings.HasPrefix(authHeader, "Basic ") {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		encoded := strings.TrimPrefix(authHeader, "Basic ")
+		decoded, err := base64.StdEncoding.DecodeString(encoded)
+		if err != nil {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		parts := strings.SplitN(string(decoded), ":", 2)
+		if len(parts) != 2 {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		incomingUser := parts[0]
+		incomingPassword := parts[1]
+
+		log.Printf("[BasicAuth] incoming user: %q", incomingUser)
+		log.Printf("[BasicAuth] incoming password: %q", incomingPassword)
+		log.Printf("[BasicAuth] cfg username: %q", cfg.Username)
+		log.Printf("[BasicAuth] cfg password: %q", cfg.Password)
+
+		userMatch := subtle.ConstantTimeCompare([]byte(incomingUser), []byte(cfg.Username))
+		passMatch := subtle.ConstantTimeCompare([]byte(incomingPassword), []byte(cfg.Password))
+		log.Printf("[BasicAuth] userMatch: %d, passMatch: %d", userMatch, passMatch)
+
+		if userMatch != 1 || passMatch != 1 {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		c.Set("caller", incomingUser)
+		c.Next()
 	}
 }

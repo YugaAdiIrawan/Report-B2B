@@ -14,6 +14,7 @@ import (
 	"github.com/YugaAdiIrawan/client"
 	"github.com/YugaAdiIrawan/config"
 	"github.com/YugaAdiIrawan/helpers"
+	"github.com/YugaAdiIrawan/middleware"
 	"github.com/YugaAdiIrawan/model/report"
 	"github.com/YugaAdiIrawan/module/report/handler"
 	"github.com/YugaAdiIrawan/module/report/repository"
@@ -112,6 +113,12 @@ type application struct {
 }
 
 func buildApp(db *sql.DB, cfg *config.Config) (*application, error) {
+	authCfg, err := middleware.LoadServiceAuthConfig()
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+		return nil, nil
+	}
+
 	//Middleware
 	mwRepo := miiddlewareRepo.NewMiddlewareRepository(db)
 	mwUsecase := middlewareUsecase.NewMiddlewareUsecase(mwRepo)
@@ -119,14 +126,13 @@ func buildApp(db *sql.DB, cfg *config.Config) (*application, error) {
 	//Router
 	router := gin.New()
 	router.Use(gin.Recovery())
-	router.Use(mwUsecase.MiddlewareRouteRoles)
 
 	//Report
 	reportRepo := repository.NewReportRepo(db)
 	emailSvc := client.NewComoEmailService(cfg.ComoEmail, reportRepo)
 	reportUC := usecase.NewReportUsecase(reportRepo, emailSvc)
 
-	handler.NewReportHandler(router, reportUC)
+	handler.NewReportHandler(router, reportUC, authCfg, mwUsecase.MiddlewareRouteRoles)
 
 	//Scheduler
 	scheduler, err := helpers.NewAutoUWSchaduers(reportUC, report.AutoUWSchedulerConfig{

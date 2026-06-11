@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/YugaAdiIrawan/config"
 	"github.com/YugaAdiIrawan/middleware"
 	report2 "github.com/YugaAdiIrawan/model/report"
 	"github.com/YugaAdiIrawan/module/report"
@@ -13,14 +14,20 @@ import (
 
 type ReportHandler struct {
 	reportUsecase report.ReportUsecase
+	cfg           *config.ServiceAuthConfig
 }
 
-func NewReportHandler(r *gin.Engine, reportUsecase report.ReportUsecase) {
+func NewReportHandler(r *gin.Engine, reportUsecase report.ReportUsecase, cfg *config.ServiceAuthConfig, roleMiddleware gin.HandlerFunc) {
 	handler := ReportHandler{
 		reportUsecase: reportUsecase,
+		cfg:           cfg,
 	}
+	authMiddleware := middleware.BasicAuth(middleware.BasicAuthConfig{
+		Username: cfg.ReportServiceUsername,
+		Password: cfg.ReportServicePassword,
+	})
 	reportUW := r.Group("/auto-uw")
-	reportUW.Use(middleware.JwtAuthWithHeader)
+	reportUW.Use(authMiddleware)
 	{
 		reportUW.GET("/export", handler.ExportReportAutoUW)
 	}

@@ -53,6 +53,7 @@ func (uc *middlewareUsecase) MiddlewareRouteRoles(c *gin.Context) {
 
 	if !isRouteRegistered {
 		log.Info().Msg("Allowed with notes, " + simplifyEndpoint(moduleName) + " not registered ")
+		c.Next()
 		return
 	}
 
@@ -74,6 +75,15 @@ func (uc *middlewareUsecase) MiddlewareRouteRoles(c *gin.Context) {
 				"messages": "User not found",
 			},
 		)
+		c.Abort()
+		return
+	}
+	if userDetail == nil {
+		log.Warn().Int("userID", userID).Msg("MiddlewareRouteRoles: userDetail is nil")
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"status":   http.StatusUnauthorized,
+			"messages": "User not found",
+		})
 		c.Abort()
 		return
 	}
