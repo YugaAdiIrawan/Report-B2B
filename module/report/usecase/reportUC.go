@@ -82,11 +82,10 @@ func buildEmailHTML(reportDate time.Time, fileSizeBytes int) string {
 <html>
 <body style="font-family: Arial, sans-serif; color: #333;">
   <h3 style="color: #1F4E79;">Auto UW Daily Report</h3>
-  <p>Halo,</p>
   <p>Terlampir adalah <strong>Report Auto UW</strong> untuk tanggal <strong>%s</strong>.</p>
   <p>File Excel terlampir berisi data seluruh pengajuan Auto UW pada hari tersebut.</p>
   <br/>
-  <p style="color: #888; font-size: 12px;">Email ini dikirim otomatis oleh sistem. Mohon tidak membalas email ini.</p>
+  <p style="color: #888; font-size: 10px;">Email ini dikirim otomatis oleh sistem. Mohon tidak membalas email ini.</p>
 </body>
 </html>`,
 		reportDate.Format("02 January 2006"),
