@@ -149,9 +149,9 @@ func buildApp(db *sql.DB, cfg *config.Config) (*application, error) {
 		Recipients: cfg.AutoUWReport.Recipients,
 		CCList:     cfg.AutoUWReport.CCList,
 		Timezone:   "Asia/Jakarta",
-		//RunHour:    3,
-		//RunMinute:  0,
-		IntervalMin: 2,
+		RunHour:    3,
+		RunMinute:  0,
+		//IntervalMin: 2,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("build app: init scheduler: %w", err)
