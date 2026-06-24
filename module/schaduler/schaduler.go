@@ -1,8 +1,10 @@
-package helpers
+package schaduler
 
 import (
 	"context"
 	"fmt"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	report2 "github.com/YugaAdiIrawan/model/report"
@@ -15,6 +17,8 @@ type AutoUWScheduler struct {
 	config   report2.AutoUWSchedulerConfig
 	stopChan chan struct{}
 	doneChan chan struct{}
+	stopOnce sync.Once
+	paused   atomic.Bool
 }
 
 func NewAutoUWSchaduers(uc report.ReportUsecase, cfg report2.AutoUWSchedulerConfig) (*AutoUWScheduler, error) {
@@ -36,8 +40,24 @@ func (s *AutoUWScheduler) Start() {
 }
 
 func (s *AutoUWScheduler) Stop() {
-	close(s.stopChan)
-	<-s.doneChan
+	s.stopOnce.Do(func() {
+		close(s.stopChan)
+		<-s.doneChan
+	})
+}
+
+func (s *AutoUWScheduler) Pause() {
+	s.paused.Store(true)
+	log.Info().Msg("auto_uw_scheduler: paused")
+}
+
+func (s *AutoUWScheduler) Resume() {
+	s.paused.Store(false)
+	log.Info().Msg("auto_uw_scheduler: resumed")
+}
+
+func (s *AutoUWScheduler) IsPaused() bool {
+	return s.paused.Load()
 }
 
 func (s *AutoUWScheduler) loop() {
@@ -64,11 +84,14 @@ func (s *AutoUWScheduler) nextRunTime() time.Time {
 	loc, _ := time.LoadLocation(s.config.Timezone)
 	now := time.Now().In(loc)
 
-	next := time.Date(now.Year(), now.Month(), now.Day(), s.config.RunHour, s.config.RunMinute, 0, 0, loc)
+	//next := time.Date(now.Year(), now.Month(), now.Day(), s.config.RunHour, s.config.RunMinute, 0, 0, loc)
+	//
+	//if !next.After(now) {
+	//	next = time.Date(now.Year(), now.Month(), now.Day()+1, s.config.RunHour, s.config.RunMinute, 0, 0, loc)
+	//}
 
-	if !next.After(now) {
-		next = time.Date(now.Year(), now.Month(), now.Day()+1, s.config.RunHour, s.config.RunMinute, 0, 0, loc)
-	}
+	interval := time.Duration(s.config.IntervalMin) * time.Minute
+	next := now.Add(interval)
 
 	log.Debug().
 		Str("now", now.Format("2006-01-02 15:04:05 MST")).
@@ -79,6 +102,11 @@ func (s *AutoUWScheduler) nextRunTime() time.Time {
 }
 
 func (s *AutoUWScheduler) runDailyReport() {
+	if s.paused.Load() {
+		log.Info().Msg("auto_uw_scheduler: skipped, scheduler is paused")
+		return
+	}
+
 	loc, _ := time.LoadLocation(s.config.Timezone)
 	yesterday := time.Now().In(loc).AddDate(0, 0, -1)
 

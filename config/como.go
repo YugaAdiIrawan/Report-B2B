@@ -7,7 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/YugaAdiIrawan/globals"
 	"github.com/YugaAdiIrawan/model/report"
+	"github.com/rs/zerolog/log"
 )
 
 type Config struct {
@@ -15,11 +17,14 @@ type Config struct {
 	AutoUWReport report.AutoUWSchedulerConfig
 }
 
+const (
+	H2HConfigIDComoSendEmail = 5
+	H2HConfigIDComoInquiry   = 6
+)
+
 func LoadConfig() (*Config, error) {
 	cfg := &Config{
 		ComoEmail: report.ComoConfig{
-			BaseURL:   mustGetEnv("COMO_EMAIL_BASE_URL"),
-			ApiKey:    mustGetEnv("COMO_EMAIL_API_KEY"),
 			FromEmail: mustGetEnv("COMO_EMAIL_FROM"),
 			Timeout:   getDurationEnv("COMO_EMAIL_TIMEOUT_SECONDS", 30*time.Second),
 		},
@@ -42,10 +47,35 @@ func (c *Config) validate() error {
 	return nil
 }
 
+func (c *Config) validateComoEmailConfig() error {
+	var missing []string
+
+	if c.ComoEmail.SendBaseURL == "" {
+		missing = append(missing, "SendBaseURL (h2h_configs id=5, base_url+path_url)")
+	}
+	if c.ComoEmail.SendApiKey == "" {
+		missing = append(missing, "SendApiKey (h2h_configs id=5, notes)")
+	}
+	if c.ComoEmail.InqBaseURL == "" {
+		missing = append(missing, "InqBaseURL (h2h_configs id=6, base_url+path_url)")
+	}
+	if c.ComoEmail.InqApiKey == "" {
+		missing = append(missing, "InqApiKey (h2h_configs id=6, notes)")
+	}
+	if c.ComoEmail.FromEmail == "" {
+		missing = append(missing, "FromEmail (env COMO_EMAIL_FROM)")
+	}
+
+	if len(missing) > 0 {
+		return fmt.Errorf("como email config tidak lengkap, field kosong: %s", strings.Join(missing, "; "))
+	}
+	return nil
+}
+
 func mustGetEnv(key string) string {
 	value := os.Getenv(key)
 	if value == "" {
-		fmt.Errorf("environment variable %s not set", key)
+		log.Fatal().Msgf("config: environment variable %s wajib di-set tapi kosong", key)
 	}
 	return value
 }
@@ -83,4 +113,62 @@ func getDurationEnv(key string, defaultVal time.Duration) time.Duration {
 		return defaultVal
 	}
 	return time.Duration(seconds) * time.Second
+}
+
+func LoadComoSendEmailFromDB(cfg *Config, h2hRepo globals.GlobalRepository) error {
+	data, err := h2hRepo.RetrieveH2hConfigAPIEmail(H2HConfigIDComoSendEmail)
+	if err != nil {
+		return fmt.Errorf("LoadComoSendEmailFromDB: query h2h_configs id=%d gagal: %w", H2HConfigIDComoSendEmail, err)
+	}
+	if data == nil {
+		return fmt.Errorf("LoadComoSendEmailFromDB: h2h_configs id=%d tidak ditemukan (deleted/missing)", H2HConfigIDComoSendEmail)
+	}
+
+	baseURL := strings.TrimSpace(data.BaseURL)
+	pathURL := strings.TrimSpace(data.PathURL)
+	apiKey := strings.TrimSpace(data.Notes)
+
+	if baseURL == "" {
+		return fmt.Errorf("LoadComoSendEmailFromDB: base_url kosong pada h2h_configs id=%d", H2HConfigIDComoSendEmail)
+	}
+	if apiKey == "" {
+		return fmt.Errorf("LoadComoSendEmailFromDB: notes (ApiKey) kosong pada h2h_configs id=%d", H2HConfigIDComoSendEmail)
+	}
+
+	cfg.ComoEmail.SendBaseURL = baseURL + pathURL
+	cfg.ComoEmail.SendApiKey = apiKey
+
+	log.Debug().Msgf("LoadComoSendEmailFromDB: send_base_url: %s", cfg.ComoEmail.SendBaseURL)
+	log.Debug().Msg("LoadComoSendEmailFromDB: send_api_key loaded (redacted)")
+
+	return nil
+}
+
+func LoadComoInqEmailFromDB(cfg *Config, h2hRepo globals.GlobalRepository) error {
+	data, err := h2hRepo.RetrieveH2hConfigAPIEmail(H2HConfigIDComoInquiry)
+	if err != nil {
+		return fmt.Errorf("LoadComoInqEmailFromDB: query h2h_configs id=%d gagal: %w", H2HConfigIDComoInquiry, err)
+	}
+	if data == nil {
+		return fmt.Errorf("LoadComoInqEmailFromDB: h2h_configs id=%d tidak ditemukan (deleted/missing)", H2HConfigIDComoInquiry)
+	}
+
+	baseURL := strings.TrimSpace(data.BaseURL)
+	pathURL := strings.TrimSpace(data.PathURL)
+	apiKey := strings.TrimSpace(data.Notes)
+
+	if baseURL == "" {
+		return fmt.Errorf("LoadComoInqEmailFromDB: base_url kosong pada h2h_configs id=%d", H2HConfigIDComoInquiry)
+	}
+	if apiKey == "" {
+		return fmt.Errorf("LoadComoInqEmailFromDB: notes (ApiKey) kosong pada h2h_configs id=%d", H2HConfigIDComoInquiry)
+	}
+
+	cfg.ComoEmail.InqBaseURL = baseURL + pathURL
+	cfg.ComoEmail.InqApiKey = apiKey
+
+	log.Debug().Msgf("LoadComoInqEmailFromDB: inq_base_url: %s", cfg.ComoEmail.InqBaseURL)
+	log.Debug().Msg("LoadComoInqEmailFromDB: inq_api_key loaded (redacted)")
+
+	return nil
 }

@@ -13,7 +13,7 @@ import (
 
 	"github.com/YugaAdiIrawan/client"
 	"github.com/YugaAdiIrawan/config"
-	"github.com/YugaAdiIrawan/helpers"
+	globalRepo "github.com/YugaAdiIrawan/globals"
 	"github.com/YugaAdiIrawan/middleware"
 	"github.com/YugaAdiIrawan/model/report"
 	"github.com/YugaAdiIrawan/module/report/handler"
@@ -21,6 +21,7 @@ import (
 	"github.com/YugaAdiIrawan/module/report/usecase"
 	"github.com/YugaAdiIrawan/module/role/middlewareUsecase"
 	"github.com/YugaAdiIrawan/module/role/miiddlewareRepo"
+	"github.com/YugaAdiIrawan/module/schaduler"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog/log"
@@ -109,7 +110,7 @@ func main() {
 
 type application struct {
 	router    *gin.Engine
-	scheduler *helpers.AutoUWScheduler
+	scheduler *schaduler.AutoUWScheduler
 }
 
 func buildApp(db *sql.DB, cfg *config.Config) (*application, error) {
@@ -117,6 +118,15 @@ func buildApp(db *sql.DB, cfg *config.Config) (*application, error) {
 	if err != nil {
 		log.Fatal().Msg(err.Error())
 		return nil, nil
+	}
+
+	//global repository
+	globalRepository := globalRepo.NewGlobalRepository(db)
+	if errConfigSendComo := config.LoadComoSendEmailFromDB(cfg, globalRepository); errConfigSendComo != nil {
+		log.Fatal().Err(errConfigSendComo).Msg("failed to load Como Send Email config from h2h_configs (id=5), app cannot start without valid Como credentials")
+	}
+	if errConfigInqComo := config.LoadComoInqEmailFromDB(cfg, globalRepository); errConfigInqComo != nil {
+		log.Fatal().Err(errConfigInqComo).Msg("failed to load Como Inquiry config from h2h_configs (id=6), app cannot start without valid Como credentials")
 	}
 
 	//Middleware
@@ -135,17 +145,18 @@ func buildApp(db *sql.DB, cfg *config.Config) (*application, error) {
 	handler.NewReportHandler(router, reportUC, authCfg, mwUsecase.MiddlewareRouteRoles)
 
 	//Scheduler
-	scheduler, err := helpers.NewAutoUWSchaduers(reportUC, report.AutoUWSchedulerConfig{
+	scheduler, err := schaduler.NewAutoUWSchaduers(reportUC, report.AutoUWSchedulerConfig{
 		Recipients: cfg.AutoUWReport.Recipients,
 		CCList:     cfg.AutoUWReport.CCList,
 		Timezone:   "Asia/Jakarta",
-		RunHour:    3,
-		RunMinute:  0,
-		//IntervalMin: 2,
+		//RunHour:    3,
+		//RunMinute:  0,
+		IntervalMin: 2,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("build app: init scheduler: %w", err)
 	}
+	schaduler.NewAdminSchedulerHandler(router, scheduler, authCfg)
 
 	return &application{
 		router:    router,

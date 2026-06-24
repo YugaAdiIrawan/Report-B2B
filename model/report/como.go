@@ -32,10 +32,12 @@ type AttachmentItem struct {
 }
 
 type ComoConfig struct {
-	BaseURL   string
-	ApiKey    string
-	FromEmail string
-	Timeout   time.Duration
+	SendBaseURL string
+	SendApiKey  string
+	InqBaseURL  string
+	InqApiKey   string
+	FromEmail   string
+	Timeout     time.Duration
 }
 
 type AutoUWSchedulerConfig struct {
@@ -45,6 +47,44 @@ type AutoUWSchedulerConfig struct {
 	RunHour     int
 	RunMinute   int
 	IntervalMin int
+}
+
+type ComoActivityData struct {
+	StatCode   string `json:"statCode"`
+	StatRemark string `json:"statRemark"`
+	ActivityID string `json:"activityId"`
+	SeqNo      int    `json:"seqNo,omitempty"`
+	SendStatus string `json:"sendStatus,omitempty"`
+	SendDate   string `json:"sendDate,omitempty"`
+}
+
+type ComoActivityResponse struct {
+	Data ComoActivityData `json:"data"`
+}
+
+const (
+	StatCodeSuccess  = "00"
+	SendStatusSent   = "sent"
+	StatCodeNotFound = "01"
+)
+
+func (r *ComoActivityResponse) IsRequestAccepted() bool {
+	return r != nil && r.Data.StatCode == StatCodeSuccess
+}
+
+func (r *ComoActivityResponse) IsDelivered() bool {
+	return r != nil && r.Data.StatCode == StatCodeSuccess && r.Data.SendStatus == SendStatusSent
+}
+
+func (r *ComoActivityResponse) IsNotFoundTransient() bool {
+	return r != nil && r.Data.StatCode == StatCodeNotFound
+}
+
+type ComoErrorResponse struct {
+	Errno   int    `json:"errno"`
+	Code    string `json:"code"`
+	Syscall string `json:"syscall"`
+	Command string `json:"command"`
 }
 
 type ComoEmailResponse struct {
