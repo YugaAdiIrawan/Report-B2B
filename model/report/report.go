@@ -65,6 +65,7 @@ type ReportFilter struct {
 	EndDate          time.Time
 	CNReleaseStatus  *CNReleaseStatus      // nil = all
 	SubmissionSource *SubmissionSourceType // nil = all, true = API, false = Upload atau External
+	IsAutoAccepted   *bool
 }
 
 type AutoUWReport struct {
@@ -76,6 +77,7 @@ type AutoUWReport struct {
 	DateOfBirth     *time.Time
 	Gender          string
 	MCUPackage      string
+	IsAutoAccepted  bool
 	Tenor           float64
 	UP              float64
 	TanggalOrder    time.Time
@@ -102,6 +104,7 @@ type ReportRequest struct {
 	EndDate          string  `form:"end_date" binding:"required"`   // format: 2006-01-02
 	CNReleaseStatus  *string `form:"cn_release_status"`             // optional
 	SubmissionSource *string `form:"submission_source"`             // optional: 0=API, 1=Upload
+	IsAutoAccepted   *bool   `form:"is_auto_accepted"`
 }
 
 type AutomailReportLog struct {

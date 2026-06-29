@@ -99,13 +99,13 @@ func GenerateAutoUWExcelHTML(data []report.AutoUWReport, reportDate time.Time) (
   .col-noref    { width: 160px; }
   .col-partner  { width: 180px; }
   .col-name     { width: 220px; }
-  .col-dob      { width: 110px; text-align: center; }
-  .col-gender   { width: 70px;  text-align: center; }
+  .col-dob      { width: 160px; text-align: center; }
+  .col-gender   { width: 80px;  text-align: center; }
   .col-mcu      { width: 130px; }
   .col-tenor    { width: 80px;  text-align: center; }
   .col-up       { width: 160px; text-align: right;  mso-number-format:'\#\,\#\#0'; }
   .col-order    { width: 170px; text-align: center; }
-  .col-source   { width: 80px;  text-align: center; }
+  .col-source   { width: 180px;  text-align: center; }
   .col-status   { width: 260px; }
 </style>
 </head>

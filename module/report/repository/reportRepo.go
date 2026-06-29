@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/YugaAdiIrawan/model/report"
-	"github.com/rs/zerolog/log"
 )
 
 type reportRepo struct {
@@ -20,6 +19,7 @@ func NewReportRepo(db *sql.DB) *reportRepo {
 }
 
 func (repo *reportRepo) FetchReportData(ctx context.Context, filter report.ReportFilter) ([]report.AutoUWReport, error) {
+
 	query, args, err := repo.buildQueryData(filter)
 	if err != nil {
 		return nil, fmt.Errorf("repoReport: build query: %w", err)
@@ -35,6 +35,7 @@ func (repo *reportRepo) FetchReportData(ctx context.Context, filter report.Repor
 		var item report.AutoUWReport
 		var dateOfBirth sql.NullTime
 		var statusSentCN sql.NullString
+		var isAutoAccepted sql.NullBool
 
 		err := rows.Scan(
 			&item.LeadID,
@@ -45,6 +46,7 @@ func (repo *reportRepo) FetchReportData(ctx context.Context, filter report.Repor
 			&dateOfBirth,
 			&item.Gender,
 			&item.MCUPackage,
+			&isAutoAccepted,
 			&item.Tenor,
 			&item.UP,
 			&item.TanggalOrder,
@@ -61,13 +63,15 @@ func (repo *reportRepo) FetchReportData(ctx context.Context, filter report.Repor
 		if statusSentCN.Valid {
 			item.StatusSentCN = &statusSentCN.String
 		}
+
+		item.IsAutoAccepted = isAutoAccepted.Valid && isAutoAccepted.Bool
+
 		result = append(result, item)
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("repoReport: rows.Err: %w", err)
 	}
-	log.Debug().Msgf("result : %v", result)
 	return result, nil
 }
 
@@ -102,16 +106,22 @@ func (repo *reportRepo) buildQueryData(filter report.ReportFilter) (string, []in
 		case report.SubmissionSourceESubmission:
 			condition = append(condition, fmt.Sprintf("source = ?"))
 			args = append(args, 1)
-			condition = append(condition, fmt.Sprintf("order_id LIKE = ?"))
+			condition = append(condition, fmt.Sprintf("order_id LIKE ?"))
 			args = append(args, "018-%")
 
 		case report.SubmissionSourceExternal:
 			condition = append(condition, fmt.Sprintf("source = ?"))
 			args = append(args, 1)
-			condition = append(condition, fmt.Sprintf("order_id NOT LIKE = ?"))
+			condition = append(condition, fmt.Sprintf("order_id NOT LIKE ?"))
 			args = append(args, "018-%")
 		}
 	}
+
+	if filter.IsAutoAccepted != nil {
+		condition = append(condition, fmt.Sprintf("is_auto_accepted = ?"))
+		args = append(args, *filter.IsAutoAccepted)
+	}
+
 	query := `
 		SELECT
 			lead_id,
@@ -122,6 +132,7 @@ func (repo *reportRepo) buildQueryData(filter report.ReportFilter) (string, []in
 			date_of_birth,
 			gender,
 			mcu_package,
+			is_auto_accepted,
 			tenor,
 			up,
 			tanggal_order,
@@ -131,9 +142,7 @@ func (repo *reportRepo) buildQueryData(filter report.ReportFilter) (string, []in
 		WHERE ` + strings.Join(condition, " AND ") + ` 
 		ORDER BY created_at ASC`
 
-	// TEMPORARY DEBUG
-	fmt.Printf("[DEBUG QUERY]\n%s\n", query)
-	fmt.Printf("[DEBUG ARGS] %+v\n", args)
+	//log.Debug().Interface("args", args).Msg("repoReport: build query data")
 	return query, args, nil
 }
 

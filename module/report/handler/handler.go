@@ -10,6 +10,7 @@ import (
 	report2 "github.com/YugaAdiIrawan/model/report"
 	"github.com/YugaAdiIrawan/module/report"
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 )
 
 type ReportHandler struct {
@@ -84,8 +85,9 @@ func (h *ReportHandler) ExportReportAutoUW(c *gin.Context) {
 	}
 
 	filter := report2.ReportFilter{
-		StartDate: startDate,
-		EndDate:   endDate,
+		StartDate:      startDate,
+		EndDate:        endDate,
+		IsAutoAccepted: req.IsAutoAccepted,
 	}
 	if req.CNReleaseStatus != nil {
 		status := report2.CNReleaseStatus(*req.CNReleaseStatus)
@@ -114,10 +116,15 @@ func (h *ReportHandler) ExportReportAutoUW(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "generate_report_failed",
-			"message": "Gagal generate report, silakan coba kembali",
+			"message": err.Error(), //"Gagal generate report, silakan coba kembali",
 		})
 		return
 	}
+	logEvent := log.Debug().Interface("req", req)
+	if req.IsAutoAccepted != nil {
+		logEvent = logEvent.Bool("is_auto_accepted", *req.IsAutoAccepted)
+	}
+	logEvent.Msg("request")
 
 	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
 	c.Header("Content-Type", "application/vnd.ms-excel; charset=UTF-8")
