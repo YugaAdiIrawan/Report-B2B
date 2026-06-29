@@ -84,14 +84,14 @@ func (s *AutoUWScheduler) nextRunTime() time.Time {
 	loc, _ := time.LoadLocation(s.config.Timezone)
 	now := time.Now().In(loc)
 
-	//next := time.Date(now.Year(), now.Month(), now.Day(), s.config.RunHour, s.config.RunMinute, 0, 0, loc)
-	//
-	//if !next.After(now) {
-	//	next = time.Date(now.Year(), now.Month(), now.Day()+1, s.config.RunHour, s.config.RunMinute, 0, 0, loc)
-	//}
+	next := time.Date(now.Year(), now.Month(), now.Day(), s.config.RunHour, s.config.RunMinute, 0, 0, loc)
 
-	interval := time.Duration(s.config.IntervalMin) * time.Minute
-	next := now.Add(interval)
+	if !next.After(now) {
+		next = time.Date(now.Year(), now.Month(), now.Day()+1, s.config.RunHour, s.config.RunMinute, 0, 0, loc)
+	}
+
+	//interval := time.Duration(s.config.IntervalMin) * time.Minute
+	//next := now.Add(interval)
 
 	log.Debug().
 		Str("now", now.Format("2006-01-02 15:04:05 MST")).
