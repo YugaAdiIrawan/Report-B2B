@@ -9,6 +9,7 @@ import (
 	"github.com/YugaAdiIrawan/middleware"
 	report2 "github.com/YugaAdiIrawan/model/report"
 	"github.com/YugaAdiIrawan/module/report"
+	role "github.com/YugaAdiIrawan/module/role/middlewareUsecase"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 )
@@ -16,12 +17,14 @@ import (
 type ReportHandler struct {
 	reportUsecase report.ReportUsecase
 	cfg           *config.ServiceAuthConfig
+	role          role.Middleware
 }
 
-func NewReportHandler(r *gin.Engine, reportUsecase report.ReportUsecase, cfg *config.ServiceAuthConfig, roleMiddleware gin.HandlerFunc) {
+func NewReportHandler(r *gin.Engine, reportUsecase report.ReportUsecase, cfg *config.ServiceAuthConfig, roleMiddleware role.Middleware) {
 	handler := ReportHandler{
 		reportUsecase: reportUsecase,
 		cfg:           cfg,
+		role:          roleMiddleware,
 	}
 	authMiddleware := middleware.BasicAuth(middleware.BasicAuthConfig{
 		Username: cfg.ReportServiceUsername,

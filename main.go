@@ -142,7 +142,7 @@ func buildApp(db *sql.DB, cfg *config.Config) (*application, error) {
 	emailSvc := client.NewComoEmailService(cfg.ComoEmail, reportRepo)
 	reportUC := usecase.NewReportUsecase(reportRepo, emailSvc)
 
-	handler.NewReportHandler(router, reportUC, authCfg, mwUsecase.MiddlewareRouteRoles)
+	handler.NewReportHandler(router, reportUC, authCfg, mwUsecase)
 
 	//Scheduler
 	scheduler, err := schaduler.NewAutoUWSchaduers(reportUC, report.AutoUWSchedulerConfig{
