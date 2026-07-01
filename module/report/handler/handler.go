@@ -32,6 +32,7 @@ func NewReportHandler(r *gin.Engine, reportUsecase report.ReportUsecase, cfg *co
 	})
 	reportUW := r.Group("/auto-uw")
 	reportUW.Use(authMiddleware)
+	reportUW.Use(handler.role.MiddlewareRouteRoles)
 	{
 		reportUW.GET("/export", handler.ExportReportAutoUW)
 	}
