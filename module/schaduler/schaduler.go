@@ -97,7 +97,7 @@ func (s *AutoUWScheduler) nextRunTime() time.Time {
 		Str("now", now.Format("2006-01-02 15:04:05 MST")).
 		Str("next_run", next.Format("2006-01-02 15:04:05 MST")).
 		Dur("wait_duration", time.Until(next)).
-		Msg("auto_uw_scheduler: next run scheduled")
+		Msgf("auto_uw_scheduler: next run scheduled %s", next)
 	return next
 }
 

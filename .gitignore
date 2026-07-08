@@ -5,3 +5,7 @@
 # Go modules
 go.sum
 go.mod
+
+.idea/
+
+.gitignore

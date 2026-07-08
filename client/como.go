@@ -43,9 +43,6 @@ func NewComoEmailService(cfg report.ComoConfig, logRepo report2.AutomailReportLo
 	if cfg.SendBaseURL == "" || cfg.SendApiKey == "" {
 		log.Fatal().Msg("como_email: SendBaseURL/SendApiKey kosong — pastikan LoadComoSendEmailFromDB sudah dipanggil")
 	}
-	if cfg.InqBaseURL == "" || cfg.InqApiKey == "" {
-		log.Fatal().Msg("como_email: InqBaseURL/InqApiKey kosong — pastikan LoadComoInqEmailFromDB sudah dipanggil")
-	}
 
 	return &comoEmailService{
 		httpClient: &http.Client{Timeout: cfg.Timeout},

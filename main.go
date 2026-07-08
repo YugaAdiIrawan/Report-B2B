@@ -14,8 +14,12 @@ import (
 	"github.com/YugaAdiIrawan/client"
 	"github.com/YugaAdiIrawan/config"
 	globalRepo "github.com/YugaAdiIrawan/globals"
+	"github.com/YugaAdiIrawan/helpers"
 	"github.com/YugaAdiIrawan/middleware"
 	"github.com/YugaAdiIrawan/model/report"
+	HealthUC "github.com/YugaAdiIrawan/module/healthCheck/Usecase"
+	HealthHandler "github.com/YugaAdiIrawan/module/healthCheck/handler"
+	HealthRepository "github.com/YugaAdiIrawan/module/healthCheck/repository"
 	"github.com/YugaAdiIrawan/module/report/handler"
 	"github.com/YugaAdiIrawan/module/report/repository"
 	"github.com/YugaAdiIrawan/module/report/usecase"
@@ -24,6 +28,7 @@ import (
 	"github.com/YugaAdiIrawan/module/schaduler"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -120,13 +125,17 @@ func buildApp(db *sql.DB, cfg *config.Config) (*application, error) {
 		return nil, nil
 	}
 
+	lastLogHook := helpers.NewLastLog()
+	log.Logger = zerolog.New(os.Stdout).
+		With().
+		Timestamp().
+		Logger().
+		Hook(lastLogHook)
+
 	//global repository
 	globalRepository := globalRepo.NewGlobalRepository(db)
 	if errConfigSendComo := config.LoadComoSendEmailFromDB(cfg, globalRepository); errConfigSendComo != nil {
 		log.Fatal().Err(errConfigSendComo).Msg("failed to load Como Send Email config from h2h_configs (id=5), app cannot start without valid Como credentials")
-	}
-	if errConfigInqComo := config.LoadComoInqEmailFromDB(cfg, globalRepository); errConfigInqComo != nil {
-		log.Fatal().Err(errConfigInqComo).Msg("failed to load Como Inquiry config from h2h_configs (id=6), app cannot start without valid Como credentials")
 	}
 
 	//Middleware
@@ -135,7 +144,15 @@ func buildApp(db *sql.DB, cfg *config.Config) (*application, error) {
 
 	//Router
 	router := gin.New()
+	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
+
+	//HealthCheck
+	startedAt := time.Now()
+
+	healthRepo := HealthRepository.NewHealthCHeckRepository(db)
+	healthUC := HealthUC.NewHealthUsecase(healthRepo, lastLogHook, startedAt)
+	HealthHandler.NewHealthHandler(router, healthUC)
 
 	//Report
 	reportRepo := repository.NewReportRepo(db)
