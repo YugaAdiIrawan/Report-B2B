@@ -63,36 +63,9 @@ type ComoActivityResponse struct {
 }
 
 const (
-	StatCodeSuccess  = "00"
-	SendStatusSent   = "sent"
-	StatCodeNotFound = "01"
+	StatCodeSuccess = "00"
 )
 
 func (r *ComoActivityResponse) IsRequestAccepted() bool {
 	return r != nil && r.Data.StatCode == StatCodeSuccess
-}
-
-func (r *ComoActivityResponse) IsDelivered() bool {
-	return r != nil && r.Data.StatCode == StatCodeSuccess && r.Data.SendStatus == SendStatusSent
-}
-
-func (r *ComoActivityResponse) IsNotFoundTransient() bool {
-	return r != nil && r.Data.StatCode == StatCodeNotFound
-}
-
-type ComoErrorResponse struct {
-	Errno   int    `json:"errno"`
-	Code    string `json:"code"`
-	Syscall string `json:"syscall"`
-	Command string `json:"command"`
-}
-
-type ComoEmailResponse struct {
-	Success bool                   `json:"success"`
-	Message string                 `json:"message"`
-	Data    *ComoEmailResponseData `json:"data,omitempty"`
-}
-
-type ComoEmailResponseData struct {
-	MessageID string `json:"messageId,omitempty"`
 }

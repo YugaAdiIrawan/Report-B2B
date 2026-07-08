@@ -110,6 +110,7 @@ type ReportRequest struct {
 type AutomailReportLog struct {
 	ID             int64
 	RequestID      string
+	ActivityID     string
 	FromEmail      string
 	ToEmails       string
 	CcEmails       string
@@ -117,10 +118,12 @@ type AutomailReportLog struct {
 	HasAttachment  bool
 	AttachmentName string
 	AttachmentSize int
+	Status         string
 	HTTPStatus     *int
 	ResponseBody   *string
 	ErrorMessage   *string
-	Status         AutomailLogStatus
+	ComoMessage    *string
+	DeliveredAt    *time.Time
 	SentAt         time.Time
 	CreatedAt      time.Time
 }
@@ -128,7 +131,8 @@ type AutomailReportLog struct {
 type AutomailLogStatus string
 
 const (
-	AutomailLogStatusSuccess   AutomailLogStatus = "SUCCESS"
-	AutomailLogStatusFailed    AutomailLogStatus = "FAILED"     // error sebelum HTTP (marshal, create req)
-	AutomailLogStatusHTTPError AutomailLogStatus = "HTTP_ERROR" // dapat response tapi non-2xx
+	AutomailLogStatusFailed              = "FAILED"
+	AutomailLogStatusHTTPError           = "HTTP_ERROR"
+	AutomailLogStatusPendingConfirmation = "PENDING_CONFIRMATION" // menunggu callback Como
+	AutomailLogStatusSuccess             = "SUCCESS"
 )
