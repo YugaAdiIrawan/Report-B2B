@@ -32,7 +32,6 @@ func NewReportHandler(r *gin.Engine, reportUsecase report.ReportUsecase, cfg *co
 	})
 	reportUW := r.Group("/auto-uw")
 	reportUW.Use(authMiddleware)
-	reportUW.Use(handler.role.MiddlewareRouteRoles)
 	{
 		reportUW.GET("/export", handler.ExportReportAutoUW)
 	}
@@ -77,13 +76,6 @@ func (h *ReportHandler) ExportReportAutoUW(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "invalid_date_range",
 			"message": "end_date tidak boleh sebelum start_date",
-		})
-		return
-	}
-	if endDate.Sub(startDate).Hours() > 31*24 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "date_range_too_large",
-			"message": "rentang tanggal maksimal 31 hari",
 		})
 		return
 	}
