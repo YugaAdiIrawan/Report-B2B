@@ -1,0 +1,11 @@
+# Environment variables
+.env
+.env.local
+
+# Go modules
+go.sum
+go.mod
+
+.idea/
+
+.gitignore
