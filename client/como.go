@@ -29,12 +29,6 @@ type comoEmailService struct {
 	logRepo    report2.AutomailReportLogRepository
 }
 
-const (
-	inquiryTimeout        = 10 * time.Second
-	maxInquiryRetries     = 5
-	inquiryRetryBaseDelay = 2 * time.Second
-)
-
 func NewComoEmailService(cfg report.ComoConfig, logRepo report2.AutomailReportLogRepository) *comoEmailService {
 	if cfg.Timeout == 0 {
 		cfg.Timeout = 30 * time.Second
