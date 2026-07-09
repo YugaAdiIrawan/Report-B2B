@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/YugaAdiIrawan/model/report"
+	"github.com/rs/zerolog/log"
 )
 
 type reportRepo struct {
@@ -150,6 +151,7 @@ func (repo *reportRepo) Insert(ctx context.Context, entry report.AutomailReportL
 	query := `
         INSERT INTO automail_report_logs (
             request_id,
+            activity_id,
             from_email,
             to_emails,
             cc_emails,
@@ -162,10 +164,11 @@ func (repo *reportRepo) Insert(ctx context.Context, entry report.AutomailReportL
             error_message,
             status,
             sent_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
-	_, err := repo.db.ExecContext(ctx, query,
+	data, err := repo.db.ExecContext(ctx, query,
 		entry.RequestID,
+		entry.ActivityID,
 		entry.FromEmail,
 		entry.ToEmails,
 		entry.CcEmails,
@@ -183,5 +186,6 @@ func (repo *reportRepo) Insert(ctx context.Context, entry report.AutomailReportL
 		return fmt.Errorf("automail_log_repo: insert: %w", err)
 	}
 
+	log.Debug().Msgf("automail_log_repo: insert: %v", data)
 	return nil
 }
