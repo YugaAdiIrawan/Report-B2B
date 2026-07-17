@@ -42,11 +42,6 @@ func main() {
 		log.Fatal().Msg("env PORT is required")
 	}
 
-	pathFile := os.Getenv("PATH_FILE")
-	if pathFile == "" {
-		log.Fatal().Msg("env PATH_FILE is required")
-	}
-
 	db, err := config.NewMySQLDB(config.MySqlConfig{
 		Host:     os.Getenv("DB_HOST"),
 		Port:     os.Getenv("DB_PORT"),
@@ -69,12 +64,18 @@ func main() {
 
 	app, err := buildApp(db, cfg)
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to build application")
+		log.Error().Err(err).Msg("failed to build application")
+		db.Close()
+		os.Exit(1)
 	}
 
 	srv := &http.Server{
-		Addr:    ":" + port,
-		Handler: app.router,
+		Addr:              ":" + port,
+		Handler:           app.router,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 
 	app.scheduler.Start()
@@ -125,9 +126,6 @@ func buildApp(db *sql.DB, cfg *config.Config) (*application, error) {
 	if errConfigSendComo := config.LoadComoSendEmailFromDB(cfg, globalRepository); errConfigSendComo != nil {
 		log.Fatal().Err(errConfigSendComo).Msg("failed to load Como Send Email config from h2h_configs (id=5), app cannot start without valid Como credentials")
 	}
-	if errConfigInqComo := config.LoadComoInqEmailFromDB(cfg, globalRepository); errConfigInqComo != nil {
-		log.Fatal().Err(errConfigInqComo).Msg("failed to load Como Inquiry config from h2h_configs (id=6), app cannot start without valid Como credentials")
-	}
 
 	//Middleware
 	mwRepo := miiddlewareRepo.NewMiddlewareRepository(db)
@@ -136,6 +134,7 @@ func buildApp(db *sql.DB, cfg *config.Config) (*application, error) {
 	//Router
 	router := gin.New()
 	router.Use(gin.Recovery())
+	router.Use(gin.Logger())
 
 	//Report
 	reportRepo := repository.NewReportRepo(db)
@@ -151,7 +150,7 @@ func buildApp(db *sql.DB, cfg *config.Config) (*application, error) {
 		Timezone:   "Asia/Jakarta",
 		RunHour:    3,
 		RunMinute:  0,
-		//IntervalMin: 2,
+		//IntervalMin: 3,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("build app: init scheduler: %w", err)

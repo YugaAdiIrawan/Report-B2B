@@ -23,17 +23,9 @@ type comoEmailService struct {
 	httpClient *http.Client
 	sendURL    string
 	sendApiKey string
-	inqBaseURL string
-	inqApiKey  string
 	fromEmail  string
 	logRepo    report2.AutomailReportLogRepository
 }
-
-const (
-	inquiryTimeout        = 10 * time.Second
-	maxInquiryRetries     = 5
-	inquiryRetryBaseDelay = 2 * time.Second
-)
 
 func NewComoEmailService(cfg report.ComoConfig, logRepo report2.AutomailReportLogRepository) *comoEmailService {
 	if cfg.Timeout == 0 {
@@ -43,16 +35,11 @@ func NewComoEmailService(cfg report.ComoConfig, logRepo report2.AutomailReportLo
 	if cfg.SendBaseURL == "" || cfg.SendApiKey == "" {
 		log.Fatal().Msg("como_email: SendBaseURL/SendApiKey kosong — pastikan LoadComoSendEmailFromDB sudah dipanggil")
 	}
-	if cfg.InqBaseURL == "" || cfg.InqApiKey == "" {
-		log.Fatal().Msg("como_email: InqBaseURL/InqApiKey kosong — pastikan LoadComoInqEmailFromDB sudah dipanggil")
-	}
 
 	return &comoEmailService{
 		httpClient: &http.Client{Timeout: cfg.Timeout},
 		sendURL:    cfg.SendBaseURL,
 		sendApiKey: cfg.SendApiKey,
-		inqBaseURL: cfg.InqBaseURL,
-		inqApiKey:  cfg.InqApiKey,
 		fromEmail:  cfg.FromEmail,
 		logRepo:    logRepo,
 	}
