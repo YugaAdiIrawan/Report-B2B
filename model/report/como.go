@@ -34,8 +34,6 @@ type AttachmentItem struct {
 type ComoConfig struct {
 	SendBaseURL string
 	SendApiKey  string
-	InqBaseURL  string
-	InqApiKey   string
 	FromEmail   string
 	Timeout     time.Duration
 }

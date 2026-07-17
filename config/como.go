@@ -19,7 +19,6 @@ type Config struct {
 
 const (
 	H2HConfigIDComoSendEmail = 5
-	H2HConfigIDComoInquiry   = 6
 )
 
 func LoadConfig() (*Config, error) {
@@ -43,6 +42,25 @@ func LoadConfig() (*Config, error) {
 func (c *Config) validate() error {
 	if len(c.AutoUWReport.Recipients) == 0 {
 		return fmt.Errorf("AUTO_UW_REPORT_RECIPIENTS tidak boleh kosong")
+	}
+	return nil
+}
+
+func (c *Config) validateComoEmailConfig() error {
+	var missing []string
+
+	if c.ComoEmail.SendBaseURL == "" {
+		missing = append(missing, "SendBaseURL (h2h_configs id=5, base_url+path_url)")
+	}
+	if c.ComoEmail.SendApiKey == "" {
+		missing = append(missing, "SendApiKey (h2h_configs id=5, notes)")
+	}
+	if c.ComoEmail.FromEmail == "" {
+		missing = append(missing, "FromEmail (env COMO_EMAIL_FROM)")
+	}
+
+	if len(missing) > 0 {
+		return fmt.Errorf("como email config tidak lengkap, field kosong: %s", strings.Join(missing, "; "))
 	}
 	return nil
 }
@@ -112,9 +130,6 @@ func LoadComoSendEmailFromDB(cfg *Config, h2hRepo globals.GlobalRepository) erro
 
 	cfg.ComoEmail.SendBaseURL = baseURL + pathURL
 	cfg.ComoEmail.SendApiKey = apiKey
-
-	log.Debug().Msgf("LoadComoSendEmailFromDB: send_base_url: %s", cfg.ComoEmail.SendBaseURL)
-	log.Debug().Msg("LoadComoSendEmailFromDB: send_api_key loaded (redacted)")
-
+	
 	return nil
 }
