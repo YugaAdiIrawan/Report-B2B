@@ -32,18 +32,31 @@ Report-B2B/
 ├── config/                # Konfigurasi database dan aplikasi
 │   ├── como.go
 │   └── config.go
-├── helpers/               # Helper functions (Excel, Scheduler)
+├── globals/               # Global repository dan interface
+│   ├── globalInterface.go
+│   └── globalRepo.go
+├── helpers/               # Helper functions (Excel, Logger)
 │   ├── exel.go
-│   └── schaduler.go
+│   └── logger.go
 ├── middleware/            # HTTP middleware
 │   └── middleware.go
 ├── model/                 # Data models
+│   ├── healthcheck/       # Model untuk healthcheck
+│   │   └── healthcheck.go
 │   ├── report/            # Model untuk report
 │   │   ├── como.go
 │   │   └── report.go
 │   └── role/              # Model untuk role
 │       └── role.go
 ├── module/                # Business modules
+│   ├── healthCheck/       # Module health check
+│   │   ├── handler/
+│   │   │   └── healthhandler.go
+│   │   ├── repository/
+│   │   ├── usecase/
+│   │   │   └── healthUC.go
+│   │   ├── repositoryInterface.go
+│   │   └── usecaseInterface.go
 │   ├── report/            # Module report
 │   │   ├── handler/
 │   │   │   └── handler.go
@@ -53,18 +66,19 @@ Report-B2B/
 │   │   │   └── reportUC.go
 │   │   ├── reportRepoInterface.go
 │   │   └── reportUCInterface.go
-│   └── role/              # Module role dan middleware
-│       ├── middlewareUsecase/
-│       │   └── middlewareUC.go
-│       └── miiddlewareRepo/
-│           └── middlewareRepo.go
+│   ├── role/              # Module role dan middleware
+│   │   ├── middlewareUsecase/
+│   │   │   └── middlewareUC.go
+│   │   └── miiddlewareRepo/
+│   └── schaduler/         # Scheduler untuk auto report
+│       ├── handler.go
+│       └── schaduler.go
 ├── .env                   # Environment variables (tidak di-commit)
 ├── .gitignore             # Git ignore file
 ├── go.mod                 # Go modules
-├── go.sum                 # Go dependencies checksum
 ├── main.go                # Entry point aplikasi
 └── README.md              # Dokumentasi project
-```
+``` 
 
 ## ⚙️ Konfigurasi
 
@@ -146,7 +160,47 @@ http://localhost:{PORT}
 
 Endpoint yang berkaitan dengan pembuatan, pengelolaan, dan pengiriman laporan.
 
-> Detail endpoint mengikuti implementasi pada module report.
+### Health Check
+
+| Method | Endpoint       | Auth | Description                    |
+|--------|----------------|------|--------------------------------|
+| GET    | `/healthCheck` | -    | Cek status kesehatan aplikasi  |
+
+**Response Fields:**
+
+| Field             | Type     | Description                                      |
+|-------------------|----------|--------------------------------------------------|
+| `status`          | string   | Status kesehatan: `healthy` atau `unhealthy`     |
+| `timestamp`       | datetime | Waktu pengecekan                                 |
+| `uptime_seconds`  | integer  | Durasi aplikasi berjalan dalam detik             |
+| `components`      | array    | Daftar komponen yang dicek (database, dll)       |
+| `last_log`        | object   | Informasi log terakhir                           |
+
+**HTTP Status:**
+- `200 OK` - Jika status `healthy`
+- `503 Service Unavailable` - Jika status `unhealthy`
+
+### Reports (Auto UW)
+
+| Method | Endpoint          | Auth        | Description                          |
+|--------|-------------------|-------------|--------------------------------------|
+| GET    | `/auto-uw/export` | Basic Auth  | Export laporan Auto UW ke file Excel |
+
+**Query Parameters untuk `/auto-uw/export`:**
+
+| Parameter          | Type    | Required | Description                                              |
+|--------------------|---------|----------|----------------------------------------------------------|
+| `start_date`       | string  | Ya       | Tanggal awal (format: `YYYY-MM-DD`)                      |
+| `end_date`         | string  | Ya       | Tanggal akhir (format: `YYYY-MM-DD`)                     |
+| `cn_release_status`| string  | Tidak    | Filter status CN release                                 |
+| `submission_source`| string  | Tidak    | Filter sumber pengajuan: `UPLOAD`, `ESUBMISSION`, `EXTERNAL` |
+| `is_auto_accepted` | boolean | Tidak    | Filter berdasarkan status auto accepted                  |
+
+**Contoh Request:**
+```bash
+curl -X GET "http://localhost:8080/auto-uw/export?start_date=2026-01-01&end_date=2026-01-31" \
+  -u "username:password"
+```
 
 ## 📝 Arsitektur
 

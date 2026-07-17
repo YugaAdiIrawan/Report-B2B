@@ -12,6 +12,12 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const (
+	generateReportMaxRetry    = 3
+	generateReportInitialWait = 2 * time.Second
+	generateReportMaxWait     = 15 * time.Second
+)
+
 type reportUsecase struct {
 	reportRepo   report.ReportRepository
 	emailService client.EmailService
@@ -49,7 +55,7 @@ func (uc *reportUsecase) SendDailyReport(ctx context.Context, targetDate time.Ti
 		EndDate:   endOfDay,
 	}
 
-	excelBytes, filename, err := uc.GenerateReport(ctx, filter)
+	excelBytes, filename, err := generateReportWithRetry(ctx, uc, filter)
 	if err != nil {
 		return fmt.Errorf("report_usecase: send daily: generate report: %w", err)
 	}
@@ -92,4 +98,39 @@ func buildEmailHTML(reportDate time.Time, fileSizeBytes int) string {
 </html>`,
 		reportDate.Format("02 January 2006"),
 	)
+}
+
+func generateReportWithRetry(ctx context.Context, ux *reportUsecase, filter report2.ReportFilter) ([]byte, string, error) {
+	var lastErr error
+	var excelBytes []byte
+	var fileName string
+
+	wait := generateReportInitialWait
+	for attempt := 1; attempt <= generateReportMaxRetry; attempt++ {
+		excelBytes, fileName, lastErr = ux.GenerateReport(ctx, filter)
+		if lastErr == nil {
+			if attempt > 1 {
+
+				log.Info().Int("attempt", attempt).Msg("report_usecase: generate report successed after retry")
+			}
+			return excelBytes, fileName, nil
+		}
+		log.Warn().Err(lastErr).Int("attempt", attempt).Int("max retry", generateReportMaxRetry).Msg("report_usecase: generate report failed, will retry")
+
+		if attempt == generateReportMaxRetry {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return nil, "", fmt.Errorf("report_usecase: generate report: context canceled duryng retry: %w", ctx.Err())
+		case <-time.After(wait):
+		}
+
+		wait *= 2
+		if wait > generateReportMaxWait {
+			wait = generateReportMaxWait
+		}
+	}
+	return nil, "", fmt.Errorf("report_usecase: generate report: failed after %d attempts: %w", generateReportMaxRetry, lastErr)
+
 }

@@ -23,8 +23,6 @@ type comoEmailService struct {
 	httpClient *http.Client
 	sendURL    string
 	sendApiKey string
-	inqBaseURL string
-	inqApiKey  string
 	fromEmail  string
 	logRepo    report2.AutomailReportLogRepository
 }
@@ -42,8 +40,6 @@ func NewComoEmailService(cfg report.ComoConfig, logRepo report2.AutomailReportLo
 		httpClient: &http.Client{Timeout: cfg.Timeout},
 		sendURL:    cfg.SendBaseURL,
 		sendApiKey: cfg.SendApiKey,
-		inqBaseURL: cfg.InqBaseURL,
-		inqApiKey:  cfg.InqApiKey,
 		fromEmail:  cfg.FromEmail,
 		logRepo:    logRepo,
 	}
