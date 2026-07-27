@@ -64,7 +64,6 @@ func (repo *reportRepo) FetchReportData(ctx context.Context, filter report.Repor
 		if statusSentCN.Valid {
 			item.StatusSentCN = &statusSentCN.String
 		}
-
 		item.IsAutoAccepted = isAutoAccepted.Valid && isAutoAccepted.Bool
 
 		result = append(result, item)
@@ -82,11 +81,11 @@ func (repo *reportRepo) buildQueryData(filter report.ReportFilter) (string, []in
 		args      []interface{}
 	)
 
-	condition = append(condition, fmt.Sprintf("created_at >= ?"))
+	condition = append(condition, "FROM_UNIXTIME(created_at / 1000) >= ?")
 	args = append(args, filter.StartDate)
 
 	endOfDay := time.Date(filter.EndDate.Year(), filter.EndDate.Month(), filter.EndDate.Day(), 23, 59, 59, 999999999, filter.EndDate.Location())
-	condition = append(condition, fmt.Sprintf("created_at <= ?"))
+	condition = append(condition, "FROM_UNIXTIME(created_at / 1000) <= ?")
 	args = append(args, endOfDay)
 
 	if filter.CNReleaseStatus != nil {

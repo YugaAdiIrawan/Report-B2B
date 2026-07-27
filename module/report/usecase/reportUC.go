@@ -35,7 +35,6 @@ func (uc *reportUsecase) GenerateReport(ctx context.Context, filter report2.Repo
 	if err != nil {
 		return nil, "", fmt.Errorf("report_usecase: fetch report data: %w", err)
 	}
-	log.Debug().Msgf("report data: %v", data)
 
 	//excelBytes, err := helpers.GenerateAutoUWExel(data, filter.StartDate)
 	excelBytes, err := helpers.GenerateAutoUWExcelHTML(data, filter.StartDate)
