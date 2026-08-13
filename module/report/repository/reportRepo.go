@@ -81,7 +81,7 @@ func (repo *reportRepo) buildQueryData(filter report.ReportFilter) (string, []in
 		args      []interface{}
 	)
 
-	condition = append(condition, "FROM_UNIXTIME(created_at / 1000) >= ?")
+	condition = append(condition, "FROM_UNIXTIME(created_at / 1000) >= ?") // fixing filter
 	args = append(args, filter.StartDate)
 
 	endOfDay := time.Date(filter.EndDate.Year(), filter.EndDate.Month(), filter.EndDate.Day(), 23, 59, 59, 999999999, filter.EndDate.Location())
