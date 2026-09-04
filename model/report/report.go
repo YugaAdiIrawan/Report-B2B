@@ -136,3 +136,27 @@ const (
 	AutomailLogStatusPendingConfirmation = "PENDING_CONFIRMATION" // menunggu callback Como
 	AutomailLogStatusSuccess             = "SUCCESS"
 )
+
+type MonthlyReportRequest struct {
+	StartDate string `form:"start_date" binding:"required"`
+	EndDate   string `form:"end_date" binding:"required"`
+	PartnerID *int64 `form:"partner_id"`
+	Status    *int   `form:"status"`
+}
+
+type MonthlyReportFilter struct {
+	StartDate time.Time
+	EndDate   time.Time
+	PartnerID *int64
+	Status    *int
+}
+
+type MonthlyReport struct {
+	NameOfInsurance string
+	Connectivity    string
+	Status          string
+	Partner         string
+	NoRef           string
+	MCUPackage      string
+	TanggalCreate   time.Time
+}

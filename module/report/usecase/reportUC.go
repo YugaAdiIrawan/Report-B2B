@@ -40,6 +40,25 @@ func (uc *reportUsecase) GenerateReport(ctx context.Context, filter report2.Repo
 	return excelBytes, fileName, nil
 }
 
+func (uc *reportUsecase) GenerateMonthlyReport(ctx context.Context, filter report2.MonthlyReportFilter) ([]byte, string, error) {
+	data, err := uc.reportRepo.FetchMonthlyReportData(ctx, filter)
+	if err != nil {
+		return nil, "", fmt.Errorf("report_usecase: fetch monthly data: %w", err)
+	}
+	log.Debug().Msgf("monthly report data: %v", data)
+
+	excelBytes, err := helpers.GenerateMonthlyReportExcelHTML(data, filter.StartDate, filter.EndDate)
+	if err != nil {
+		return nil, "", fmt.Errorf("report_usecase: generate monthly excel: %w", err)
+	}
+
+	fileName := fmt.Sprintf("Monthly_Report_%s_to_%s.xls",
+		filter.StartDate.Format("2006-01-02"),
+		filter.EndDate.Format("2006-01-02"),
+	)
+	return excelBytes, fileName, nil
+}
+
 func (uc *reportUsecase) SendDailyReport(ctx context.Context, targetDate time.Time, recipients []string) error {
 	startOfDay := time.Date(targetDate.Year(), targetDate.Month(), targetDate.Day(), 0, 0, 0, 0, targetDate.Location())
 	endOfDay := time.Date(targetDate.Year(), targetDate.Month(), targetDate.Day(), 23, 59, 59, 999999999, targetDate.Location())
