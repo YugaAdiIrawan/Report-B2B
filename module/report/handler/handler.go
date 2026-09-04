@@ -34,6 +34,7 @@ func NewReportHandler(r *gin.Engine, reportUsecase report.ReportUsecase, cfg *co
 	reportUW.Use(authMiddleware)
 	{
 		reportUW.GET("/export", handler.ExportReportAutoUW)
+		reportUW.GET("/monthly/export", handler.ExportMonthlyReport)
 	}
 }
 
@@ -121,6 +122,77 @@ func (h *ReportHandler) ExportReportAutoUW(c *gin.Context) {
 		logEvent = logEvent.Bool("is_auto_accepted", *req.IsAutoAccepted)
 	}
 	logEvent.Msg("request")
+
+	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	c.Header("Content-Type", "application/vnd.ms-excel; charset=UTF-8")
+	c.Header("Content-Length", fmt.Sprintf("%d", len(excelBytes)))
+	c.Header("Content-Transfer-Encoding", "binary")
+	c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+	c.Header("Pragma", "no-cache")
+	c.Header("Expires", "0")
+	c.Data(http.StatusOK, "application/vnd.ms-excel; charset=UTF-8", excelBytes)
+}
+
+func (h *ReportHandler) ExportMonthlyReport(c *gin.Context) {
+	var req report2.MonthlyReportRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid_request",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	jakartaLoc, err := time.LoadLocation("Asia/Jakarta")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "timezone_error",
+			"message": "gagal load timezone",
+		})
+		return
+	}
+
+	startDate, err := time.ParseInLocation("2006-01-02", req.StartDate, jakartaLoc)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid_start_date",
+			"message": "format harus: YYYY-MM-DD",
+		})
+		return
+	}
+
+	endDate, err := time.ParseInLocation("2006-01-02", req.EndDate, jakartaLoc)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid_end_date",
+			"message": "format harus: YYYY-MM-DD",
+		})
+		return
+	}
+
+	if endDate.Before(startDate) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid_date_range",
+			"message": "end_date tidak boleh sebelum start_date",
+		})
+		return
+	}
+
+	filter := report2.MonthlyReportFilter{
+		StartDate: startDate,
+		EndDate:   endDate,
+		PartnerID: req.PartnerID,
+		Status:    req.Status,
+	}
+
+	excelBytes, filename, err := h.reportUsecase.GenerateMonthlyReport(c.Request.Context(), filter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "generate_monthly_report_failed",
+			"message": err.Error(),
+		})
+		return
+	}
 
 	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
 	c.Header("Content-Type", "application/vnd.ms-excel; charset=UTF-8")

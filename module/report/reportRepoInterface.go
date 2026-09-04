@@ -8,6 +8,7 @@ import (
 
 type ReportRepository interface {
 	FetchReportData(ctx context.Context, filter report.ReportFilter) ([]report.AutoUWReport, error)
+	FetchMonthlyReportData(ctx context.Context, filter report.MonthlyReportFilter) ([]report.MonthlyReport, error)
 }
 
 type AutomailReportLogRepository interface {

@@ -146,6 +146,96 @@ func (repo *reportRepo) buildQueryData(filter report.ReportFilter) (string, []in
 	return query, args, nil
 }
 
+func (repo *reportRepo) FetchMonthlyReportData(ctx context.Context, filter report.MonthlyReportFilter) ([]report.MonthlyReport, error) {
+	query, args := repo.buildMonthlyQuery(filter)
+
+	rows, err := repo.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("repoReport: select monthly: %w", err)
+	}
+	defer rows.Close()
+
+	var result []report.MonthlyReport
+	for rows.Next() {
+		var item report.MonthlyReport
+		if err := rows.Scan(
+			&item.NameOfInsurance,
+			&item.Connectivity,
+			&item.Status,
+			&item.Partner,
+			&item.NoRef,
+			&item.MCUPackage,
+			&item.TanggalCreate,
+		); err != nil {
+			return nil, fmt.Errorf("repoReport: scan monthly: %w", err)
+		}
+		result = append(result, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("repoReport: rows.Err monthly: %w", err)
+	}
+	return result, nil
+}
+
+func (repo *reportRepo) buildMonthlyQuery(filter report.MonthlyReportFilter) (string, []interface{}) {
+	var (
+		conditions []string
+		args       []interface{}
+	)
+
+	conditions = append(conditions, "(l.deleted_at IS NULL OR l.deleted_at = 0)")
+	conditions = append(conditions, "FROM_UNIXTIME(l.created_at / 1000) >= ?")
+	args = append(args, filter.StartDate.Format("2006-01-02"))
+	conditions = append(conditions, "FROM_UNIXTIME(l.created_at / 1000) < ?")
+	args = append(args, filter.EndDate.Format("2006-01-02"))
+	conditions = append(conditions, "mpt.id <> 31")
+
+	if filter.PartnerID != nil {
+		conditions = append(conditions, "p.id = ?")
+		args = append(args, *filter.PartnerID)
+	}
+
+	if filter.Status != nil {
+		conditions = append(conditions, "l.status = ?")
+		args = append(args, *filter.Status)
+	}
+
+	query := `
+		SELECT
+			lp.name_of_insurance AS name_of_insurance,
+			CASE
+				WHEN l.is_submission = true THEN 'esubmission'
+				ELSE 'upload'
+			END AS 'Connectivity',
+			CASE
+				WHEN l.status = 0 THEN 'Invalid'
+				WHEN l.status = 1 THEN 'New'
+				WHEN l.status = 2 THEN 'OnProcess'
+				WHEN l.status = 3 THEN 'Accepted'
+				WHEN l.status = 4 THEN 'Rejected'
+				WHEN l.status = 5 THEN 'Canceled'
+				WHEN l.status = 6 THEN 'Expired'
+				WHEN l.status = 7 THEN 'Paid'
+				WHEN l.status = 8 THEN 'Postpone'
+				ELSE ''
+			END AS 'Status',
+			p.partner_name AS partner,
+			li.ref_number AS no_ref,
+			COALESCE(mpt.mcu_type_name, '-') AS mcu_package,
+			FROM_UNIXTIME(l.created_at / 1000) AS tanggal_create
+		FROM leads l
+		JOIN lead_personals lp ON l.id = lp.lead_id AND lp.deleted_at IS NULL
+		LEFT JOIN partners p ON l.partner_id = p.id
+		JOIN lead_installments li ON l.id = li.lead_id AND li.deleted_at IS NULL
+		LEFT JOIN mcu_package_types mpt ON l.mcu_package_type_id = mpt.id
+		LEFT JOIN mcu_packages mp ON mp.mcu_package_type_id = mpt.id
+		WHERE ` + strings.Join(conditions, " AND ") + `
+		ORDER BY tanggal_create ASC`
+
+	return query, args
+}
+
 func (repo *reportRepo) Insert(ctx context.Context, entry report.AutomailReportLog) error {
 	query := `
         INSERT INTO automail_report_logs (
