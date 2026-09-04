@@ -218,6 +218,8 @@ func (repo *reportRepo) buildMonthlyQuery(filter report.MonthlyReportFilter) (st
 				WHEN l.status = 6 THEN 'Expired'
 				WHEN l.status = 7 THEN 'Paid'
 				WHEN l.status = 8 THEN 'Postpone'
+			    WHEN l.status = 9 THEN 'Pending Approver'
+			    WHEN l.status = 10 THEN 'Pending Cosigner'
 				ELSE ''
 			END AS 'Status',
 			p.partner_name AS partner,
